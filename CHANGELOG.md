@@ -2,11 +2,17 @@
 
 All notable changes to this pack. The format follows Keep a Changelog, and the pack uses semantic versioning: a patch for wording and fixes, a minor for a new skill or install path, a major for renaming or removing a skill.
 
+## [0.1.3] - 2026-10-24
+
+### Changed
+
+- Directory listing metadata: display name "OpenKey", and documentation, privacy policy, terms of service and support links.
+
 ## [0.1.2] - 2026-10-24
 
 ### Added
 
-- Plugin icon (`.claude-plugin/icon.png`), the OpenKey mark.
+- Plugin icon: the OpenKey mark.
 
 ### Changed
 
