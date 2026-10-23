@@ -24,7 +24,7 @@ python3 evals/runner.py --cases evals/cases --dry-run                 # print th
 ANTHROPIC_API_KEY=… python3 evals/runner.py --cases evals/cases --max-sweep-usd 3
 ```
 
-`--plugin-dir` defaults to the repo root, so the skills under test are the working tree's. `Read` is always pre-approved, because skills tell the agent to read their own `references/` files; every other tool comes from the case's `allow` list. Results land in `evals/results/` (git-ignored); a dry run writes nothing.
+`--plugin-dir` defaults to the repo root, so the skills under test are the working tree's. Reads inside the fixture project need no approval. `Read` is pre-approved only under the plugin's `skills/` and `commands/` (`Read(//<plugin-dir>/skills/**)`), because skills tell the agent to read their own `references/` files; a bare `Read` would approve every path on the machine. Every other tool comes from the case's `allow` list. Results land in `evals/results/` (git-ignored); a dry run writes nothing.
 
 ## Case schema
 
@@ -32,8 +32,8 @@ ANTHROPIC_API_KEY=… python3 evals/runner.py --cases evals/cases --max-sweep-us
 |---|---|
 | `skill` | Which skill the case belongs to; `--only` selects on it |
 | `shape` | Free label shown in the summary |
-| `fixture_project` | A directory under `evals/projects/`; copied to a temp dir that is the cwd for the run |
-| `allow` | Any of `Read, Glob, Grep, Edit, Write, WebFetch`; anything else is refused. `WebFetch` is for the free, read-only model-id lookup |
+| `fixture_project` | A directory under `evals/projects/`; copied to a temp dir that is the cwd for the run. A fixture that contains a symlink is refused |
+| `allow` | Any of `Read, Glob, Grep, Edit, Write, WebFetch`; anything else is refused. `WebFetch` is for the free, read-only model-id lookup and is pre-approved only for `api.openkey.ai` and `openkey.ai` |
 | `assert` | See below |
 | `model`, `max_turns`, `max_budget_usd` | Per-case overrides (defaults: the `--model` flag, 10, 0.6) |
 | `approve_denied_writes` | Project paths whose denied `Write` the runner applies after the run, as if the user approved the prompt. Claude Code always asks before writing `.claude/settings.json`, even under a pre-approved `Write`, so a run without prompts denies it |

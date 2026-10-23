@@ -76,6 +76,6 @@ curl https://api.openkey.ai/v1/messages \
 ```
 
 - `error.type` is one of Anthropic's values: `invalid_request_error`, `authentication_error`, `permission_error`, `not_found_error`, `request_too_large`, `rate_limit_error`, `billing_error`, `timeout_error`, `api_error`, `overloaded_error`.
-- These bodies carry no OpenKey `code` and no `doc_url`: only Anthropic's vocabulary. Branch on the exception class or `error.type`.
+- These bodies carry no OpenKey `code` and no `doc_url`: only Anthropic's vocabulary. Branch on the exception class or `error.type`. The errors docs page says `code` is the same on every route; production does not send it here.
 - Quote `error.request_id`, also sent as the `X-OpenKey-Request-Id` response header, to support.
 - A `401` is always about the OpenKey key, never a provider outage.

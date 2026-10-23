@@ -9,6 +9,7 @@ allow: [Read, Glob, Grep, Edit, Write, WebFetch]
 approve_denied_writes: [.claude/settings.json]
 assert:
   files_regex:
-    .claude/settings.json: '^(?=.*ANTHROPIC_BASE_URL)(?=.*X-OpenKey-Tags)(?=.*"https://api\.openkey\.ai")'
+    # apiKeyHelper makes a teammate without OPENKEY_API_KEY fail closed instead of sending their own login
+    .claude/settings.json: '^(?=.*ANTHROPIC_BASE_URL)(?=.*X-OpenKey-Tags)(?=.*"https://api\.openkey\.ai")(?=.*"apiKeyHelper"\s*:\s*"printenv OPENKEY_API_KEY")'
   files_not_regex:
     .claude/settings.json: 'ANTHROPIC_AUTH_TOKEN|sk-ok-|X-OpenKey-User'   # no token and no personal identifier in a committed file

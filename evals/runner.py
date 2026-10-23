@@ -28,6 +28,8 @@ import yaml
 
 # WebFetch is read-only and spends nothing; the skills use it to confirm model ids in the free catalog.
 ALLOWED_TOOLS = frozenset({"Read", "Glob", "Grep", "Edit", "Write", "WebFetch"})
+# What a case's WebFetch pre-approves: only the hosts the skills cite, so a case cannot send data elsewhere.
+WEBFETCH_RULES = ("WebFetch(domain:api.openkey.ai)", "WebFetch(domain:openkey.ai)")
 CLAUDE_TIMEOUT_S = 600
 
 
@@ -253,12 +255,21 @@ def apply_approved_writes(project_dir: Path, denials: list[Denial], approve: lis
 
 def stage_project(name: str, cases_root: Path, tmp: Path) -> Path:
     """Copy evals/projects/<name> into `tmp`; the copy is the cwd for `claude -p`.
-    `cases_root` is evals/cases, so the projects sit next to it."""
+    `cases_root` is evals/cases, so the projects sit next to it. A symlink in the
+    fixture is refused: copied, it would pull an outside file into the project."""
+    if not name or "/" in name or "\\" in name or ".." in name:
+        raise UnsafeCase(f"bad fixture name {name!r}")
     src = Path(cases_root).parent / "projects" / name
+    if src.is_symlink():
+        raise UnsafeCase(f"fixture project {name!r} is a symlink")
     if not src.is_dir():
         raise ValueError(f"no fixture project {name!r}")
+    for dirpath, dirs, names in os.walk(src):
+        for n in dirs + names:
+            if (Path(dirpath) / n).is_symlink():
+                raise UnsafeCase(f"fixture project {name!r} contains a symlink: {Path(dirpath, n).relative_to(src)}")
     dest = Path(tmp) / name
-    shutil.copytree(src, dest)
+    shutil.copytree(src, dest, symlinks=True)
     return dest
 
 
@@ -334,11 +345,20 @@ def build_command(*, prompt: str, allow: list[str], plugin_dir: str | None, mode
            "--verbose", "--permission-mode", "default", "--permission-prompts", "none",
            "--strict-mcp-config", "--mcp-config", json.dumps({"mcpServers": {}}),
            "--model", model, "--max-turns", str(max_turns), "--max-budget-usd", str(max_budget)]
+    rules: list[str] = []
     if plugin_dir:
         cmd += ["--plugin-dir", plugin_dir]
-    # Read is always allowed: skills tell the agent to read their own references/ files,
-    # and a denied Read would fail every case on the harness rather than on the skill.
-    cmd += ["--allowedTools", ",".join(dict.fromkeys(["Read", *allow]))]
+        # Skills read their own references/ outside the project, and a denied Read would fail the
+        # case on the harness. Reads inside the project need no rule; a bare Read approves every path.
+        root = Path(plugin_dir).resolve()
+        rules += [f"Read(/{root}/skills/**)", f"Read(/{root}/commands/**)"]
+    for name in allow:
+        if name == "WebFetch":
+            rules += WEBFETCH_RULES
+        elif name != "Read":
+            rules.append(name)
+    if rules:
+        cmd += ["--allowedTools", ",".join(dict.fromkeys(rules))]
     if settings_json:
         cmd += ["--settings", settings_json]
     return cmd

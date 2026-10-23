@@ -31,7 +31,8 @@ def make_pack(tmp_path: Path) -> Path:
     root = tmp_path / "pack"
     v = "0.1.0"
     write(root / "VERSION", v + "\n")
-    write(root / "scripts" / "live_facts.json", json.dumps({"example_models": ["openai/gpt-5.2"], "virtual_models": ["openkey/auto"]}))
+    write(root / "scripts" / "live_facts.json", json.dumps({"example_models": ["openai/gpt-5.2"], "virtual_models": ["openkey/auto"],
+                                                            "endpoints": [], "docs": []}))
     write(root / ".claude-plugin" / "plugin.json", json.dumps({"name": "openkey", "version": v}))
     write(root / ".claude-plugin" / "marketplace.json", json.dumps({"name": "openkey", "metadata": {"version": v}, "plugins": [{"name": "openkey", "source": "./", "version": v}]}))
     write(root / ".codex-plugin" / "plugin.json", json.dumps({"name": "openkey", "version": v, "skills": "./skills/"}))
@@ -355,4 +356,89 @@ def test_sync_test_is_dev_only(tmp_path):
     # It names denylisted hosts on purpose to prove they never reach the public tree, and is itself never published.
     root = make_pack(tmp_path)
     write(root / "tests" / "test_sync_public.py", "acme-secret-client\n")
+    assert errors(root) == []
+
+
+# --- final-review gates: command tools, provider-prefixed ids, URL coverage ---------
+
+SCOPED_TOOLS = '[Read, Glob, Grep, Edit, Write, "WebFetch(domain:api.openkey.ai)", "WebFetch(domain:openkey.ai)"]'
+
+
+def command(root: Path, tools: str):
+    write(root / "commands" / "x.md", f"---\ndescription: X\nallowed-tools: {tools}\n---\n\nDo x.\n")
+
+
+def test_command_may_not_pre_approve_bash_or_unscoped_webfetch(tmp_path):
+    for i, bad in enumerate(["[Read, Bash]", '[Read, "Bash(curl *)"]', "[Read, WebFetch]", '["WebFetch(domain:*)"]', "Read Bash"]):
+        root = make_pack(tmp_path / str(i)); command(root, bad)
+        assert any("commands/x.md" in e and "allowed-tools" in e for e in errors(root)), bad
+
+
+def test_command_with_scoped_tools_passes(tmp_path):
+    root = make_pack(tmp_path); command(root, SCOPED_TOOLS)
+    assert errors(root) == []
+
+
+def _facts(root: Path, **extra):
+    facts = json.loads((root / "scripts" / "live_facts.json").read_text())
+    facts.update(extra)
+    write(root / "scripts" / "live_facts.json", json.dumps(facts))
+
+
+@pytest.mark.parametrize("line", [
+    'export ANTHROPIC_DEFAULT_HAIKU_MODEL="openai/gpt-9"',
+    '"ANTHROPIC_DEFAULT_OPUS_MODEL": "openai/gpt-9"',
+    'setx ANTHROPIC_DEFAULT_SONNET_MODEL "openai/gpt-9"',
+    'Model:    "openai/gpt-9",',
+    "    model: openai/gpt-9",
+    "Call `openai/gpt-9` for this.",
+])
+def test_provider_prefixed_id_must_be_listed(tmp_path, line):
+    root = make_pack(tmp_path)
+    write(root / "skills/openkey-agents/references/y.md", f"# Y\n\n{line}\n")
+    assert any("openai/gpt-9" in e and "model id" in e for e in errors(root)), line
+
+
+def test_provider_prefixed_scan_skips_packages_urls_and_patterns(tmp_path):
+    root = make_pack(tmp_path); _facts(root, example_models=["openai/gpt-5.2", "google/gemini-2.5-flash"])
+    ok = ("import { GoogleGenAI } from \"@google/genai\";\n"
+          "POST /v1beta/models/google/gemini-2.5-flash:generateContent\n"
+          "grep '\"id\":\"openai/gpt-9[^\"]*\"'\n"
+          "Use `openai/gpt-5.2`. Then `openai/gpt-5.2:nitro`, or google/gemini-2.5-flash.\n")
+    write(root / "skills/openkey-agents/references/y.md", "# Y\n\n" + ok)
+    assert not any("model id" in e for e in errors(root))
+    write(root / "skills/openkey-agents/references/y.md", "# Y\n\nUse google/gemini-9 here.\n")
+    assert any("google/gemini-9" in e for e in errors(root))
+
+
+def _url_pack(tmp_path):
+    root = make_pack(tmp_path)
+    _facts(root, endpoints=[{"method": "GET", "url": "https://api.openkey.ai/v1/models", "expect": 200},
+                            {"method": "POST", "url": "https://api.openkey.ai/v1beta/models/google/gemini-2.5-flash:generateContent", "expect": 401}],
+           docs=["https://openkey.ai/docs/errors", "https://openkey.ai/llms-full.txt"])
+    return root
+
+
+def test_cited_openkey_urls_must_be_bases_or_live_facts(tmp_path):
+    root = _url_pack(tmp_path)
+    good = ("Bases https://openkey.ai, `https://api.openkey.ai` and \"https://api.openkey.ai/v1\".\n"
+            "See https://openkey.ai/docs/errors#unauthorized and (https://openkey.ai/llms-full.txt).\n"
+            "List: `curl -s https://api.openkey.ai/v1/models | jq`.\n"
+            "Templates: https://openkey.ai/docs/<page> and https://api.openkey.ai/v1beta/models/{model}:generateContent.\n")
+    write(root / "skills/openkey-agents/references/notes.md", "# Y\n\n" + good)
+    write(root / "INSTALL.md", "# Install\n\nCheck https://api.openkey.ai/v1/models.\n")
+    assert errors(root) == []
+    write(root / "skills/openkey-agents/references/notes.md", "# Y\n\nFetch https://openkey.ai/llms-fulll.txt first.\n")
+    assert any("notes.md" in e and "llms-fulll.txt" in e for e in errors(root))
+    write(root / "skills/openkey-agents/references/notes.md", "# Y\n\nGET https://api.openkey.ai/v2/{x}/models\n")
+    assert any("notes.md" in e and "/v2/" in e for e in errors(root))
+
+
+def test_url_rule_covers_every_published_file_but_tests(tmp_path):
+    root = _url_pack(tmp_path)
+    write(root / ".codex-plugin" / "plugin.json", json.dumps({"name": "openkey", "version": "0.1.0", "skills": "./skills/", "interface": {"privacyPolicyURL": "https://openkey.ai/privacy"}}))
+    assert any(".codex-plugin/plugin.json" in e and "/privacy" in e for e in errors(root))
+    root = _url_pack(tmp_path / "b")
+    write(root / "tests" / "test_x.py", "BAD = 'https://openkey.ai/nope'\n")
+    write(root / "evals" / "tests" / "test_y.py", "BAD = 'https://openkey.ai/nope'\n")
     assert errors(root) == []

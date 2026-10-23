@@ -27,7 +27,7 @@
 
 ## Suffixes
 
-A suffix on a real id changes how it is routed. The set is closed: any other suffix is a `404` on the id as sent, never silently dropped.
+A suffix on a real id changes how it is routed. The set is closed: any other suffix is a `404` on the id as sent, never silently dropped, unless the catalog lists the id with it. The full list carries such ids, for example the `:batch` ids; use them exactly as listed.
 
 | Suffix | Effect |
 |---|---|
@@ -38,16 +38,18 @@ A suffix on a real id changes how it is routed. The set is closed: any other suf
 
 When a suffix changed routing, the response carries `X-OpenKey-Variant`. An id in the catalog that itself contains a colon is used exactly as listed.
 
+If a suffixed id returns `404` on the single-id lookup below, check the exact id in the full `GET https://api.openkey.ai/v1/models` list; only if it is absent there, check the base id.
+
 ## Catalog commands
 
-None of these needs a key. When you look an id up yourself, prefer a web-fetch tool on the same URLs, since it needs no command approval; the shell forms are for the user or for a host without one.
+None of these needs a key. When you look an id up yourself, prefer a web-fetch tool on the same URLs over a shell; Claude Code may ask once per domain. The shell forms are for the user or for a host without a fetch tool.
 
 ```bash
 # every id the gateway accepts, from GET /v1/models
 curl -s https://api.openkey.ai/v1/models | grep -o '"id":"anthropic/[^"]*"'
 curl -s https://api.openkey.ai/v1/models | jq -r '.data[].id'
 
-# one exact id: 200 when it exists, 404 when it does not
+# one exact id: 200 when it exists, 404 when it does not (a suffixed id that 404s: check the full list, then the base id)
 curl -s -o /dev/null -w '%{http_code}\n' https://api.openkey.ai/api/public/v1/models/openai/gpt-4o
 
 # one model's details from the public catalog

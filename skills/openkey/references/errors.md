@@ -79,7 +79,7 @@ Parse `error.code` and `error.message` on every route, and `error.type` when pre
 - Retry `429 rate_limited` after `Retry-After`, with jitter, and `5xx` with exponential backoff and a cap.
 - Never retry `provider_credits_exhausted`, `free_quota_exceeded` before its reset, any `401`, `402`, `403` or `404`, or a `400` unchanged.
 - Upstream statuses are mapped once by the gateway: a provider `4xx` becomes `400 upstream_error`, a provider `5xx` becomes `503 upstream_unavailable`, a provider `429` becomes `429 rate_limited`. Do not re-map them in client code.
-- Branch on `code`, not on the status. The OpenAI and Anthropic SDKs retry every `429` and `5xx` twice by default, so they also re-send `provider_credits_exhausted`, `free_quota_exceeded` and a `429 quota_exceeded`, which waiting never fixes. Where that matters, turn the SDK's retries off (`max_retries=0` in Python, `maxRetries: 0` in TypeScript, on the client or per call) and retry yourself only on `rate_limited` and `5xx` codes. The OpenAI SDKs expose the code as `err.code` on their API errors. Never stack your own retry loop on top of the SDK's default one.
+- Branch on `code`, not on the status. The OpenAI and Anthropic SDKs retry every `429` and `5xx` twice by default, so they also re-send `provider_credits_exhausted`, `free_quota_exceeded` and a `429 quota_exceeded`, which waiting never fixes. Where that matters, turn the SDK's retries off and retry yourself only on `rate_limited` and `5xx` codes. In Python `max_retries` is a client option, not a `create()` argument: `OpenAI(max_retries=0)`, or `client.with_options(max_retries=0)` for one call. In TypeScript, `maxRetries: 0` goes in the client options or a call's request options. The OpenAI SDKs expose the code as `err.code` on their API errors. Never stack your own retry loop on top of the SDK's default one.
 
 ## Errors inside a stream
 
@@ -99,6 +99,6 @@ data: [DONE]
 
 ## Other dialects
 
-- `/v1/messages` answers in Anthropic's shape, `{"type": "error", "error": {"type": …, "message": …, "request_id": …}}`, with no OpenKey `code`: only Anthropic's types (`invalid_request_error`, `authentication_error`, `permission_error`, `not_found_error`, `request_too_large`, `rate_limit_error`, `billing_error`, `timeout_error`, `api_error`, `overloaded_error`), so the Anthropic SDK raises its usual exceptions.
+- `/v1/messages` answers in Anthropic's shape, `{"type": "error", "error": {"type": …, "message": …, "request_id": …}}`, with no OpenKey `code` (the errors docs page says otherwise; production does not send it): only Anthropic's types (`invalid_request_error`, `authentication_error`, `permission_error`, `not_found_error`, `request_too_large`, `rate_limit_error`, `billing_error`, `timeout_error`, `api_error`, `overloaded_error`), so the Anthropic SDK raises its usual exceptions.
 - The Gemini surface answers in Google's shape, `{"error": {"code": <HTTP status>, "message": …, "status": …, "request_id": …}}`, with the `google.rpc.Code` name in `status` (`INVALID_ARGUMENT`, `UNAUTHENTICATED`, `PERMISSION_DENIED`, `NOT_FOUND`, `RESOURCE_EXHAUSTED`, `UNAVAILABLE`, `INTERNAL`, …).
 - Neither carries `doc_url`. Quote `request_id` or the `X-OpenKey-Request-Id` header either way.

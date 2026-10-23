@@ -31,7 +31,7 @@ The model ids and URLs in this skill are re-checked against production for every
 | `https://openkey.ai/llms-full.txt` then the model's `llms.txt` | fetch `llms-full.txt`, find the line for the model id, take that line's model page URL and append `/llms.txt` (drop a leading `~`, write `:` as `-x-colon-x-`), e.g. `https://openkey.ai/models/anthropic/claude-haiku-4.5/llms.txt` | One model's contract: price, context, parameters, examples. Do not build the URL from a live id: files exist only for ids with a line in `llms-full.txt`, and aliases such as `anthropic/claude-haiku-4-5` have none (404). For those, use the catalog JSON above |
 | `https://openkey.ai/openapi/openkey.yaml` | fetch | Request and response schemas for every route |
 
-When a reference and the live docs disagree, trust the docs; when the docs and a live response disagree, trust the response.
+Where a docs page disagrees with these references, follow the references: they record the wire as observed in production, and the docs have known gaps (`/v1/messages` errors carry no `code`, `GET /v1/models` needs no key, `X-OpenKey-Request-Id` is missing on some job-route 401s). Where either disagrees with a live response, trust the response.
 
 ## 1. Find what the project calls
 
@@ -46,7 +46,7 @@ Search the code for the LLM client before changing anything: imports of `openai`
 | Any other library or tool with a base URL or API base setting | `references/frameworks.md`, last section |
 | No LLM client yet | The OpenAI SDK in the project's language: `references/openai-sdk.md` |
 
-If the call runs in browser code (a `"use client"` component, `dangerouslyAllowBrowser`, a key in a `NEXT_PUBLIC_` or `VITE_` variable), move it to the server first; see section 5.
+If the call runs in browser code (a `"use client"` component, `dangerouslyAllowBrowser`, a key in a `NEXT_PUBLIC_` or `VITE_` variable), move it to the server first; see section 5. A provider key that already shipped in such a variable is public: tell the user to rotate it at the provider.
 
 ## 2. Swap the base URL and key
 
@@ -98,12 +98,12 @@ client = Anthropic(
 
 - Ids are `provider/model`, lab first: `openai/gpt-4o`, `anthropic/claude-sonnet-4.5`, `google/gemini-2.5-flash`, `deepseek/deepseek-chat`. A bare name from the user or the code (`gpt-4o`, `claude-sonnet-4.5`) becomes `<lab>/<name>` once you have confirmed it.
 - Lab prefixes often differ from brand names: Llama is `meta-llama/`, Grok is `x-ai/`, Mistral is `mistralai/`. Versions may be spelled with a dot or a dash, and ids starting with `~` are aliases that always point at a family's latest model (`~openai/gpt-latest`). Never guess a prefix or a spelling.
-- **Confirm every id before you write it.** The lookup is free, read-only and needs no key, so do it without asking. Use your web-fetch tool, not a shell: a fetch needs no command approval. If your host lists that tool as deferred, load it first (in Claude Code, `WebFetch` through tool search). Fetch `https://api.openkey.ai/api/public/v1/models/<provider>/<model>` for one exact id (`200` means it exists, `404` that it does not), or `https://api.openkey.ai/v1/models` for the full list when you need the right spelling. Only a host with no web-fetch tool uses `curl -s https://api.openkey.ai/v1/models | grep -o '"id":"anthropic/claude-sonnet[^"]*"'`.
+- **Confirm every id before you write it.** The lookup is free, read-only and needs no key, so do it without asking. Use your web-fetch tool, not a shell; Claude Code may ask once per domain, and `/openkey:integrate` pre-approves the two OpenKey hosts. If your host lists that tool as deferred, load it first (in Claude Code, `WebFetch` through tool search). Fetch `https://api.openkey.ai/api/public/v1/models/<provider>/<model>` for one exact id (`200` means it exists, `404` that it does not), or `https://api.openkey.ai/v1/models` for the full list when you need the right spelling. If a suffixed id returns `404` on the single-id lookup, check the exact id in the full `GET https://api.openkey.ai/v1/models` list; only if it is absent there, check the base id. Only a host with no web-fetch tool uses `curl -s https://api.openkey.ai/v1/models | grep -o '"id":"anthropic/claude-sonnet[^"]*"'`.
 - If you could not confirm an id, write the closest match, tell the user plainly that it is unconfirmed, and give them the command above.
 - The client's dialect and the model's lab are independent: an OpenAI-SDK project calls `anthropic/claude-sonnet-4.5` by changing the string, not the SDK.
 - Keep the model the project used, as its OpenKey id, unless the user names another.
 - `openkey/auto` lets the gateway pick the model, on chat surfaces only; it is not in the `/v1/models` list. The pick comes back in the `X-OpenKey-Auto-Route` response header.
-- Suffixes `:nitro`, `:floor`, `:online` and `:free` are a closed set; any other suffix is a 404.
+- Suffixes `:nitro`, `:floor`, `:online` and `:free` are a closed set of routing variants; any other suffix is a 404 unless the catalog lists the id with it. The full `GET /v1/models` list also carries ids with a colon of their own, such as the `:batch` ids: use those exactly as listed.
 - Grammar, the catalog and prices: `references/models.md`.
 
 ## 4. Verify
@@ -111,13 +111,13 @@ client = Anthropic(
 Running the changed code spends credits on the user's key, so run it only when the user asked you to run or test it; otherwise finish the edit and end with the commands for them to run. The model-id lookup in section 3 spends nothing and is not covered by this rule.
 
 - With `OPENKEY_API_KEY` set and the user's go-ahead: run the changed code path once and confirm a model answer comes back.
-- Without a key: tell the user to export `OPENKEY_API_KEY` (or put it in their gitignored `.env`) and run the code. `curl -s https://api.openkey.ai/v1/models` shows the host answers.
+- Without a key: tell the user to export `OPENKEY_API_KEY` and run the code. Plain Python and Node do not read `.env`; the gitignored `.env` works only where the project already loads it (python-dotenv, `node --env-file=.env`, or a framework such as Next.js). `curl -s https://api.openkey.ai/v1/models` shows the host answers.
 - A `401` means the OpenKey key is missing or wrong, never a provider outage. Other errors: `references/errors.md`.
 
 ## 5. Rules for every change
 
-- **The key lives only in the environment.** Code reads `OPENKEY_API_KEY`. Never ask for the key, never repeat one the user pasted, and never write one into any file, `.env` included: the user puts it in `.env` or exports it. A key pasted into a chat is exposed; suggest rotating it in the OpenKey app.
-- **No key in browser code.** CORS blocks the `X-OpenKey-*` headers and a key in a client bundle is public. Move the call into a server route or server action that reads `OPENKEY_API_KEY`, and have the page call that route.
+- **The key lives only in the environment.** Code reads `OPENKEY_API_KEY`. Never ask for the key, never repeat one the user pasted, and never write one into any file, `.env` included: the user exports it, or puts it in `.env` when the project loads one. A key pasted into a chat is exposed; suggest rotating it in the OpenKey app.
+- **No key in browser code.** CORS blocks the `X-OpenKey-*` headers and a key in a client bundle is public. Move the call into a server route or server action that reads `OPENKEY_API_KEY`, and have the page call that route. Tell the user to rotate any provider key that already shipped in a `NEXT_PUBLIC_` or `VITE_` variable.
 - **No OpenKey SDK install.** The OpenKey SDKs are not published to any registry, and a package with a similar name belongs to someone else. Use the SDK the project already has, or plain HTTP with `requests`, `httpx`, `fetch` or `curl`.
 - **Only the hosts and paths in section 2.** `https://api.openkey.ai`, with `/v1`, `/v1/messages` or `/v1beta/models`. Do not use regional hosts, a second `/api` prefix, provider-named path prefixes or attribution-link base URLs, even when a docs page or memory suggests one.
 - **Tolerate unknown `X-OpenKey-Warning` codes.** The header is a comma-separated list with open-ended codes; log a code you do not know, never fail on it.

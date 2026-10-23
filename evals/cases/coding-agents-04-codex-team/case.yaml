@@ -1,0 +1,13 @@
+skill: openkey-coding-agents
+shape: integrates-right
+fixture_project: py-openai
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, Edit, Write, WebFetch]
+assert:
+  files_not_regex:
+    # Codex drops a project file's provider but keeps its model, so teammates would send openkey/auto to OpenAI.
+    .codex/config.toml: '(?m)^\s*(model|model_provider)\s*='
+  result_regex_all:
+    - '~/\.codex/config\.toml'
+    - '(?i)per[- ]user|user[- ]level|each (developer|teammate)|every (developer|teammate)|their own'

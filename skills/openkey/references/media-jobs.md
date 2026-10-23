@@ -30,14 +30,14 @@ curl https://api.openkey.ai/v1/images/generations \
 
 ## Videos: a job you poll
 
-`POST /v1/videos` answers `202` with a job and a `Location` header. `Location` is a path: resolve it against the URL the response actually came from, after any redirect (`urljoin(r.url, r.headers["Location"])`), not against a base you hard-coded. Poll it until the `X-OpenKey-Job-Status` header is terminal: `succeeded`, `failed`, `cancelled` or `expired` (non-terminal: `queued`, `running`). Branch on that header, not the body: the body keeps the Sora statuses (`queued`, `in_progress`, `completed`, `failed`), so a cancelled or expired video says `failed` there. `Retry-After` on a poll is the spacing to wait. The MP4 is at `/v1/videos/{id}/content` and answers `409 job_not_ready` until the job succeeded. `seconds` is a string on the wire (`"8"`).
+`POST /v1/videos` answers `202` with a job and a `Location` header. `Location` is a path: resolve it against the URL the response actually came from, after any redirect (`urljoin(r.url, r.headers["Location"])`), not against a base you hard-coded. Send the key only if the resolved URL's host is `api.openkey.ai`; for any other host, stop instead of polling. The same holds for every job you poll. Poll it until the `X-OpenKey-Job-Status` header is terminal: `succeeded`, `failed`, `cancelled` or `expired` (non-terminal: `queued`, `running`). Branch on that header, not the body: the body keeps the Sora statuses (`queued`, `in_progress`, `completed`, `failed`), so a cancelled or expired video says `failed` there. `Retry-After` on a poll is the spacing to wait. The MP4 is at `/v1/videos/{id}/content` and answers `409 job_not_ready` until the job succeeded. `seconds` is a string on the wire (`"8"`).
 
 `X-OpenKey-Idempotency-Key` makes the create safe to retry: the same key returns the first job, with `X-OpenKey-Idempotent-Replay: true`. Only `POST /v1/videos` accepts it.
 
 ```python
 import os
 import time
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -53,6 +53,9 @@ def make_video(video_model: str, prompt: str, idempotency_key: str) -> bytes:
     )
     r.raise_for_status()
     job_url = urljoin(r.url, r.headers["Location"])
+    u = urlparse(job_url)
+    if u.scheme != "https" or u.hostname != "api.openkey.ai":
+        raise RuntimeError(f"refusing to send the key to {job_url}")
     while True:
         r = requests.get(job_url, headers=AUTH, timeout=60)
         r.raise_for_status()
@@ -78,7 +81,7 @@ def make_video(video_model: str, prompt: str, idempotency_key: str) -> bytes:
 
 Instead of polling, register an HTTPS endpoint once for terminal job events (`succeeded`, `failed`, `cancelled`, `expired`) of every kind: `POST /v1/webhooks` with `url`, and optionally `description`, `kinds` (`video`, `batch`, `completion`; omitted means all) and `disabled`. Unknown fields are a `400`. The create response (and a rotate, `POST /v1/webhooks/{id}/rotate`) is the only time the signing secret, starting `whsec_`, is shown: store it in the app's own secret store or environment.
 
-Each delivery carries `X-OpenKey-Signature: t=<unix seconds>,v1=<hex>[,v1=<hex>]`: one lowercase-hex HMAC-SHA256 of `<t>.<raw body>` per signing secret, keyed with the whole secret, `whsec_` included. During a rotation the old and the new secret both sign (24 hours by default), so the header carries several `v1` values: accept the delivery if any of them matches. Verify against the raw body bytes, reject a `t` more than 5 minutes off in either direction, compare in constant time, and de-duplicate on `X-OpenKey-Event-Id`, because delivery is at least once.
+Each delivery carries `X-OpenKey-Signature: t=<unix seconds>,v1=<hex>[,v1=<hex>]`: one lowercase-hex HMAC-SHA256 of `<t>.<raw body>` per signing secret, keyed with the whole secret, `whsec_` included. During a rotation the old and the new secret both sign (24 hours by default), so the header carries several `v1` values: accept the delivery if any of them matches. Verify against the raw body bytes, reject a `t` more than 5 minutes off in either direction, compare in constant time, and de-duplicate on `X-OpenKey-Event-Id`, because delivery is at least once. A malformed header is a failed check, never an exception: `verify()` below returns `False` for it.
 
 ```python
 import hashlib
@@ -86,10 +89,12 @@ import hmac
 import time
 
 def verify(raw_body: bytes, signature_header: str, secret: str, tolerance_s: int = 300) -> bool:
-    pairs = [[s.strip() for s in p.split("=", 1)] for p in signature_header.split(",") if "=" in p]
+    pairs = [[s.strip() for s in p.split("=", 1)] for p in (signature_header or "").split(",") if "=" in p]
     t = next((v for k, v in pairs if k == "t"), "")
-    v1s = [v for k, v in pairs if k == "v1"]
-    if not t.isdigit() or not v1s or abs(time.time() - int(t)) > tolerance_s:
+    v1s = [v for k, v in pairs if k == "v1" and v.isascii()]   # compare_digest raises on non-ASCII str
+    # isdigit() alone accepts non-ASCII digits such as "²", which int() rejects; the length cap
+    # keeps int() clear of Python's digit limit (ValueError past 4300 digits).
+    if not (t.isascii() and t.isdigit() and len(t) <= 12) or not v1s or abs(time.time() - int(t)) > tolerance_s:
         return False
     expected = hmac.new(secret.encode(), f"{t}.".encode() + raw_body, hashlib.sha256).hexdigest()
     return any(hmac.compare_digest(expected, v) for v in v1s)

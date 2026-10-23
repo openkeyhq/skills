@@ -27,8 +27,15 @@ LIVE_FACTS = "scripts/live_facts.json"
 MODEL_ROOTS = ("skills", "commands", "rules")
 # Routing suffixes are a closed set (routing docs); an id may carry one.
 MODEL_SUFFIXES = (":nitro", ":floor", ":online", ":free")
-# JSON, Python kwarg, TS object, TOML, shell.
+# JSON, Python kwarg, TS object, TOML, shell. Catches ids under a lab live_facts does not know.
 MODEL_RE = re.compile(r'''(?:["']?\bmodel["']?\s*[:=]|ANTHROPIC_MODEL["']?\s*[:=])\s*["']([^"']+)["']''')
+# Any `<lab>/<model>` for a lab live_facts knows. The lookbehind skips URL paths and
+# package names (`@google/genai`); the lookahead skips grep patterns (`…sonnet[^"]*`).
+ID_RE = r"(?<![\w./@~-])~?(?:%s)/[\w.:-]+(?![\w.:\[-])"
+# Every https://(api.)openkey.ai literal must be one of these, or a live_facts URL.
+URL_BASES = {"https://openkey.ai", "https://api.openkey.ai", "https://api.openkey.ai/v1"}
+URL_RE = re.compile(r"https://(?:api\.)?openkey\.ai(?![\w-])[^\s`\"'()\[\]|*,]*")
+PLACEHOLDER_RE = re.compile(r"\{[^{}]+\}|<[^<>]+>")
 # Strings that are documented but not live, or wrong (plan: "Must never appear in the pack").
 # These files name them on purpose, so they are not scanned. The pasted-key eval
 # prompt carries a fake key (all-A secret): the case checks it never reaches a file.
@@ -205,24 +212,87 @@ def check_forbidden(root: Path, problems: list[Problem]) -> None:
                 problems.append(Problem(rel, f"forbidden string {rx.search(text).group(0)!r}: {why}"))
 
 
-def check_model_ids(root: Path, problems: list[Problem]) -> None:
-    facts = root / LIVE_FACTS
+def check_commands(root: Path, problems: list[Problem]) -> None:
+    """A command's allowed-tools pre-approves tools for its whole turn: no shell, and fetches only to named hosts."""
+    cdir = root / "commands"
+    for p in sorted(cdir.glob("*.md")) if cdir.is_dir() else []:
+        rel = _rel(root, p)
+        fm, _, err = _split(p.read_text())
+        if err:
+            problems.append(Problem(rel, err))
+            continue
+        tools = fm.get("allowed-tools") or []
+        if isinstance(tools, str):
+            tools = [t for t in re.split(r"[\s,]+", tools) if t]
+        if not isinstance(tools, list):
+            problems.append(Problem(rel, "allowed-tools must be a list or a string"))
+            continue
+        for t in map(str, tools):
+            name = t.split("(", 1)[0].strip()
+            if name == "Bash" or (name == "WebFetch" and not re.fullmatch(r"WebFetch\(domain:[A-Za-z0-9.-]+\)", t.strip())):
+                problems.append(Problem(rel, f"allowed-tools {t!r} pre-approves any shell command or any host; "
+                                             "leave Bash to the prompt and scope WebFetch to a domain"))
+
+
+def _load_facts(root: Path, keys: tuple[str, ...], problems: list[Problem], what: str) -> dict | None:
     try:
-        data = json.loads(facts.read_text())
-        allowed = set(data["example_models"]) | set(data["virtual_models"])
+        data = json.loads((root / LIVE_FACTS).read_text())
+        for k in keys:
+            if not isinstance(data[k], list):
+                raise TypeError(f"{k} is not a list")
+        return data
     except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
-        problems.append(Problem(LIVE_FACTS, f"missing or unreadable ({e!r}); model ids cannot be checked"))
+        problems.append(Problem(LIVE_FACTS, f"missing or unreadable ({e!r}); {what} cannot be checked"))
+        return None
+
+
+def check_model_ids(root: Path, problems: list[Problem]) -> None:
+    data = _load_facts(root, ("example_models", "virtual_models"), problems, "model ids")
+    if data is None:
         return
+    allowed = set(data["example_models"]) | set(data["virtual_models"])
+    labs = sorted({m.lstrip("~").split("/")[0] for m in allowed if "/" in m})
+    id_re = re.compile(ID_RE % "|".join(map(re.escape, labs))) if labs else None
     for f in published_files(root):
         rel = _rel(root, f)
         if rel.split("/")[0] not in MODEL_ROOTS:
             continue
-        text = _text(f)
-        for m in MODEL_RE.finditer(text or ""):
-            mid = m.group(1)
+        text = _text(f) or ""
+        ids = [m.group(1) for m in MODEL_RE.finditer(text)]
+        ids += [m.group(0).rstrip(".:") for m in id_re.finditer(text)] if id_re else []
+        for mid in dict.fromkeys(ids):
             base = next((mid[: -len(x)] for x in MODEL_SUFFIXES if mid.endswith(x)), mid)
             if base not in allowed:
                 problems.append(Problem(rel, f"model id {mid!r} is not in {LIVE_FACTS}; add it there or use a listed id"))
+
+
+def _url_known(url: str, known: set[str]) -> bool:
+    if url in known:
+        return True
+    if not PLACEHOLDER_RE.search(url):
+        return False
+    rx = re.compile(".+".join(re.escape(part) for part in PLACEHOLDER_RE.split(url)))
+    return any(rx.fullmatch(k) for k in known)
+
+
+def check_urls(root: Path, problems: list[Problem]) -> None:
+    """Every cited openkey.ai URL is a base or a live_facts URL, so check_live probes what the pack cites."""
+    data = _load_facts(root, ("endpoints", "docs"), problems, "URLs")
+    if data is None:
+        return
+    norm = lambda u: u.split("#", 1)[0].rstrip("/")  # noqa: E731
+    known = {norm(u) for u in URL_BASES | {e["url"] for e in data["endpoints"]} | set(data["docs"])}
+    for f in published_files(root):
+        rel = _rel(root, f)
+        # Tests may cite a bad URL on purpose, to prove this rule catches it.
+        if rel in FORBIDDEN_EXEMPT or "tests" in rel.split("/")[:-1]:
+            continue
+        for m in dict.fromkeys(m.group(0) for m in URL_RE.finditer(_text(f) or "")):
+            url = m.rstrip(".,;:!?")
+            if url.count(">") > url.count("<"):
+                url = url.rstrip(">")
+            if not _url_known(norm(url), known):
+                problems.append(Problem(rel, f"URL {url!r} is not a base or in {LIVE_FACTS}; add it there (check_live probes it) or cite a listed one"))
 
 
 def check_denylist(root: Path, problems: list[Problem], required: bool) -> None:
@@ -337,7 +407,9 @@ def lint(root: Path, require_denylist: bool = False) -> list[Problem]:
     check_denylist(root, problems, require_denylist)
     check_links(root, problems)
     check_forbidden(root, problems)
+    check_commands(root, problems)
     check_model_ids(root, problems)
+    check_urls(root, problems)
     return problems
 
 

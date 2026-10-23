@@ -70,6 +70,41 @@
       "method": "POST",
       "url": "https://api.openkey.ai/v1/webhooks",
       "expect": 401
+    },
+    {
+      "method": "GET",
+      "url": "https://openkey.ai/models/anthropic/claude-haiku-4-5/llms.txt",
+      "expect": 404
+    },
+    {
+      "method": "GET",
+      "url": "https://api.openkey.ai/v1/jobs/x",
+      "expect": 401
+    },
+    {
+      "method": "GET",
+      "url": "https://api.openkey.ai/v1/videos/x",
+      "expect": 401
+    },
+    {
+      "method": "GET",
+      "url": "https://api.openkey.ai/v1/videos/x/content",
+      "expect": 401
+    },
+    {
+      "method": "GET",
+      "url": "https://api.openkey.ai/v1/batches/x",
+      "expect": 401
+    },
+    {
+      "method": "GET",
+      "url": "https://api.openkey.ai/v1/batches/x/output",
+      "expect": 401
+    },
+    {
+      "method": "POST",
+      "url": "https://api.openkey.ai/v1/webhooks/x/rotate",
+      "expect": 401
     }
   ],
   "example_models": [
@@ -82,7 +117,8 @@
     "deepseek/deepseek-chat",
     "~openai/gpt-latest",
     "anthropic/claude-haiku-4.5",
-    "anthropic/claude-opus-4.5"
+    "anthropic/claude-opus-4.5",
+    "anthropic/claude-haiku-4-5"
   ],
   "virtual_models": [
     "openkey/auto"
@@ -105,6 +141,10 @@
     "https://openkey.ai/openapi/openkey.yaml",
     "https://openkey.ai/models",
     "https://openkey.ai/models/anthropic/claude-haiku-4.5/llms.txt",
-    "https://openkey.ai/docs/attribution"
+    "https://openkey.ai/docs/attribution",
+    "https://openkey.ai/llms-full.txt",
+    "https://openkey.ai/privacy",
+    "https://openkey.ai/terms",
+    "https://openkey.ai/contact"
   ]
 }

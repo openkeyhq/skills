@@ -10,6 +10,7 @@ We aim to acknowledge reports within a few business days and ask for a reasonabl
 
 - They are instructions for a coding agent. The pack makes no calls with your key, runs no server, and requires no local binaries to use.
 - API keys stay in the `OPENKEY_API_KEY` environment variable or a gitignored `.env`. No skill asks for, echoes, stores or commits a key, and none puts one in a tracked file or in browser code.
+- `/openkey:integrate` runs only when you type it; the agent cannot invoke it on its own. It pre-approves only file reads and edits and fetches to `api.openkey.ai` and `openkey.ai`. Running code or any shell command still asks you first.
 - The development scripts (`scripts/`) are for maintainers. The live check sends unauthenticated requests only and expects a 401 from routes that need a key.
 
 ## Supported versions

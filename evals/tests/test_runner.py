@@ -102,11 +102,18 @@ def test_command_shape():
     assert "--strict-mcp-config" in cmd and "stream-json" in cmd
 
 
-def test_read_is_always_pre_approved_and_allow_adds_editing_tools():
-    cmd = build()
-    assert cmd[cmd.index("--allowedTools") + 1] == "Read"
-    cmd = build(allow=["Read", "Glob", "Grep", "Edit", "Write"])
-    assert cmd[cmd.index("--allowedTools") + 1] == "Read,Glob,Grep,Edit,Write"
+def allowed(cmd):
+    return cmd[cmd.index("--allowedTools") + 1] if "--allowedTools" in cmd else None
+
+
+def test_read_is_pre_approved_only_inside_the_plugin():
+    # Reads in the project need no approval; a bare Read would approve every path on the machine.
+    rules = "Read(//p/skills/**),Read(//p/commands/**)"
+    assert allowed(build(plugin_dir="/p")) == rules
+    assert allowed(build(plugin_dir="/p", allow=["Read", "Glob", "Grep", "Edit", "Write"])) == rules + ",Glob,Grep,Edit,Write"
+    assert allowed(build(plugin_dir="", allow=["Read", "Glob"])) == "Glob"
+    assert allowed(build(plugin_dir="", allow=["Read"])) is None
+    assert "Read" not in allowed(build(plugin_dir="/p", allow=["Read"])).split(",")
 
 
 @pytest.mark.parametrize("tool", ["Bash", "WebSearch", "mcp__x__y"])
@@ -115,9 +122,9 @@ def test_tool_outside_the_allowed_set_is_refused(tool):
         build(allow=[tool])
 
 
-def test_webfetch_may_be_pre_approved():
-    cmd = build(allow=["Glob", "WebFetch"])
-    assert cmd[cmd.index("--allowedTools") + 1] == "Read,Glob,WebFetch"
+def test_webfetch_is_scoped_to_the_openkey_hosts():
+    assert allowed(build(plugin_dir="", allow=["Glob", "WebFetch"])) == "Glob,WebFetch(domain:api.openkey.ai),WebFetch(domain:openkey.ai)"
+    assert "WebFetch" not in allowed(build(plugin_dir="/p", allow=["WebFetch"])).split(",")
 
 
 def test_api_key_helper_only_when_a_key_is_set():
@@ -136,6 +143,35 @@ def test_stage_project_copies_tree(tmp_path):
 def test_unknown_fixture_project_errors(tmp_path):
     with pytest.raises(ValueError, match="no fixture project 'nope'"):
         runner.stage_project("nope", CASES, tmp_path)
+
+
+def test_stage_project_refuses_a_fixture_with_a_symlink(tmp_path):
+    proj = tmp_path / "projects" / "evil"; (proj / "sub").mkdir(parents=True)
+    (tmp_path / "secret.txt").write_text("outside")
+    (proj / "app.py").write_text("x")
+    (proj / "sub" / "config.yml").symlink_to(tmp_path / "secret.txt")
+    out = tmp_path / "out"; out.mkdir()
+    with pytest.raises(runner.UnsafeCase, match="symlink"):
+        runner.stage_project("evil", tmp_path / "cases", out)
+    assert not (out / "evil").exists()
+
+
+def test_stage_project_refuses_a_symlinked_fixture_root(tmp_path):
+    (tmp_path / "projects").mkdir()
+    real = tmp_path / "outside"; real.mkdir(); (real / "app.py").write_text("x")
+    (tmp_path / "projects" / "evil").symlink_to(real, target_is_directory=True)
+    out = tmp_path / "out"; out.mkdir()
+    with pytest.raises(runner.UnsafeCase, match="symlink"):
+        runner.stage_project("evil", tmp_path / "cases", out)
+    assert not (out / "evil").exists()
+
+
+@pytest.mark.parametrize("bad", ["../x", "a/b", "..", "/abs"])
+def test_stage_project_refuses_a_bad_fixture_name(tmp_path, bad):
+    (tmp_path / "x").mkdir()
+    out = tmp_path / "out"; out.mkdir()
+    with pytest.raises(runner.UnsafeCase, match="fixture name"):
+        runner.stage_project(bad, tmp_path / "cases", out)
 
 
 def test_files_regex_pass_and_fail(tmp_path):

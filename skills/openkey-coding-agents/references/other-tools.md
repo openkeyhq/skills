@@ -49,7 +49,7 @@ The key does not go in `settings.json`: the user enters it in the Agent panel â†
 
 ## Continue
 
-A model block in `~/.continue/config.yaml`, a per-user file outside the project. The user replaces the placeholder with their own key:
+A model entry for `~/.continue/config.yaml`, a per-user file outside the project. It is a fragment: merge it into the file's existing `models:` list and keep everything else (a new file also needs Continue's top-level `name`, `version` and `schema`). The user replaces the placeholder with their own key:
 
 ```yaml
 models:

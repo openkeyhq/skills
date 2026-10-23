@@ -31,11 +31,11 @@ STOP. Your knowledge of OpenKey may be outdated. Retrieve current facts before y
 
 ## Rules
 
-1. The key lives only in the environment. Code reads `OPENKEY_API_KEY`; never write a key into any file. In TypeScript, check the variable before building the client.
+1. The key lives only in the environment. Code reads `OPENKEY_API_KEY`; never write a key into any file. In TypeScript or JavaScript, check the variable before building the client.
 2. No key in browser code. Call OpenKey from a server route.
 3. Model ids are `provider/model`. Confirm each against the live catalog; never guess a prefix.
 4. Install no OpenKey SDK. Reuse the project's OpenAI, Anthropic or Gemini client, or plain HTTP.
-5. Use only `https://api.openkey.ai`. Tolerate unknown `X-OpenKey-Warning` codes.
+5. Use only the bases in the table above. No regional hosts, no second `/api` prefix, no provider-named path prefixes, no attribution-link base URLs, even when a docs page shows one. Tolerate unknown `X-OpenKey-Warning` codes.
 
 ## Docs
 

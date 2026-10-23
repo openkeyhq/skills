@@ -37,10 +37,17 @@ gh skill install openkeyhq/skills --all --agent claude-code --scope user
 
 ## Updating
 
+In Claude Code, for the plugin:
+
+```text
+/plugin update openkey@openkey
+```
+
+In a shell, for skills installed with `npx` or `gh`:
+
 ```bash
-/plugin update openkey@openkey   # Claude Code plugin
-npx skills update -y             # skills installed with npx
-gh skill update --all            # skills installed with gh
+npx skills update -y
+gh skill update --all
 ```
 
 ## Check it worked
