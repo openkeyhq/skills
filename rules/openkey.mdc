@@ -1,0 +1,44 @@
+---
+description: When writing code that calls an LLM through OpenKey (api.openkey.ai)
+alwaysApply: false
+globs:
+  - "**/*.py"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.go"
+  - ".env.example"
+---
+
+# OpenKey
+
+STOP. Your knowledge of OpenKey may be outdated. Retrieve current facts before you write a base URL, a header or a model id.
+
+## Retrieve first
+
+- Docs index: https://openkey.ai/llms.txt
+- Docs pages: https://openkey.ai/docs/quickstart, https://openkey.ai/docs/compatibility, https://openkey.ai/docs/errors
+- Live model ids (free, no key): `GET https://api.openkey.ai/v1/models`
+- Schemas: https://openkey.ai/openapi/openkey.yaml
+
+## Three dialects, one host
+
+| Client | Base URL | Key header |
+|---|---|---|
+| OpenAI SDK | `https://api.openkey.ai/v1` | `Authorization: Bearer $OPENKEY_API_KEY` |
+| Anthropic SDK | `https://api.openkey.ai` (no `/v1`) | `x-api-key: $OPENKEY_API_KEY` |
+| Gemini HTTP | `https://api.openkey.ai` | `x-goog-api-key: $OPENKEY_API_KEY` |
+
+## Rules
+
+1. The key lives only in the environment. Code reads `OPENKEY_API_KEY`; never write a key into any file. In TypeScript, check the variable before building the client.
+2. No key in browser code. Call OpenKey from a server route.
+3. Model ids are `provider/model`. Confirm each against the live catalog; never guess a prefix.
+4. Install no OpenKey SDK. Reuse the project's OpenAI, Anthropic or Gemini client, or plain HTTP.
+5. Use only `https://api.openkey.ai`. Tolerate unknown `X-OpenKey-Warning` codes.
+
+## Docs
+
+- Full guidance: the `openkey` skill in this plugin
+- Errors: https://openkey.ai/docs/errors
+- Models: https://openkey.ai/docs/models

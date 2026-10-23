@@ -1,0 +1,41 @@
+{
+  "name": "openkey",
+  "version": "0.1.0",
+  "description": "Integrate the OpenKey LLM gateway into your project and run your coding agent through it: one key, OpenAI-, Anthropic- and Gemini-compatible.",
+  "author": {
+    "name": "OpenKey",
+    "url": "https://openkey.ai"
+  },
+  "homepage": "https://openkey.ai",
+  "repository": "https://github.com/openkeyhq/skills",
+  "license": "MIT",
+  "keywords": [
+    "openkey",
+    "llm",
+    "llm-gateway",
+    "openai-compatible",
+    "model-routing",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "OpenKey",
+    "shortDescription": "Wire the OpenKey LLM gateway into your code",
+    "longDescription": "OpenKey is one LLM gateway with OpenAI-, Anthropic- and Gemini-compatible endpoints. These skills teach the agent to point your project's SDK calls at OpenKey, pick valid provider/model ids from the live catalog, and run your coding agent through OpenKey, without ever handling your API key.",
+    "developerName": "OpenKey",
+    "category": "Coding",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://openkey.ai",
+    "defaultPrompt": [
+      "Switch this project's OpenAI calls to OpenKey",
+      "Run Codex through OpenKey",
+      "Which OpenKey model id should I use?"
+    ],
+    "privacyPolicyURL": "https://openkey.ai/privacy",
+    "termsOfServiceURL": "https://openkey.ai/terms",
+    "supportURL": "https://openkey.ai/contact"
+  }
+}

@@ -1,0 +1,10 @@
+skill: openkey
+shape: integrates-right
+fixture_project: ts-openai
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, Edit, Write, WebFetch]
+assert:
+  files_regex:
+    # both must hold; one regex per file, so the two checks are lookaheads
+    src/llm.ts: '^(?=.*baseURL:\s*["'']https://api\.openkey\.ai/v1)(?=.*process\.env\.OPENKEY_API_KEY)'

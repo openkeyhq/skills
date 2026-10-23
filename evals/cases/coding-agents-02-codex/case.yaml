@@ -1,0 +1,10 @@
+skill: openkey-coding-agents
+shape: presentation
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, WebFetch]
+assert:
+  result_regex_all:
+    - 'model_provider'
+    - 'base_url = "https://api\.openkey\.ai/v1"'
+    - 'env_key = "OPENKEY_API_KEY"'

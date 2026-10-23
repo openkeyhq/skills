@@ -1,0 +1,11 @@
+skill: openkey
+shape: integrates-right
+fixture_project: py-litellm
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, Edit, Write, WebFetch]
+assert:
+  files_regex:
+    # both must hold; one regex per file, so the two checks are lookaheads
+    app.py: '^(?=.*api\.openkey\.ai/v1)(?=.*OPENKEY_API_KEY)'
+  result_not_regex: '@openkey/s[d]k|pip install open[k]ey'   # bracketed so the pack lint does not flag this file

@@ -1,0 +1,6 @@
+{"type":"system","subtype":"init","session_id":"sess-1","apiKeySource":"none","mcp_servers":[]}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"app.py"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"from openai import OpenAI"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"Edit","input":{"file_path":"app.py"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t2","content":"The file app.py has been updated."}]}}
+{"type":"result","subtype":"success","session_id":"sess-1","result":"Switched app.py to https://api.openkey.ai/v1 and read the key from OPENKEY_API_KEY.","total_cost_usd":0.31,"num_turns":3,"permission_denials":[],"is_error":false}

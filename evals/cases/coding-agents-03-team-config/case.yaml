@@ -1,0 +1,14 @@
+skill: openkey-coding-agents
+shape: integrates-right
+fixture_project: py-openai
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, Edit, Write, WebFetch]
+# Claude Code always asks before writing its own .claude/settings.json, even under a
+# pre-approved Write, so the run denies it; the runner applies that denied Write as the approval.
+approve_denied_writes: [.claude/settings.json]
+assert:
+  files_regex:
+    .claude/settings.json: '^(?=.*ANTHROPIC_BASE_URL)(?=.*X-OpenKey-Tags)(?=.*"https://api\.openkey\.ai")'
+  files_not_regex:
+    .claude/settings.json: 'ANTHROPIC_AUTH_TOKEN|sk-ok-|X-OpenKey-User'   # no token and no personal identifier in a committed file

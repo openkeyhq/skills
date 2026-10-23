@@ -1,0 +1,9 @@
+skill: openkey
+shape: presentation
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, WebFetch]
+assert:
+  result_regex_all:
+    - 'openai/gpt-4o'
+    - '/v1/models'

@@ -1,0 +1,11 @@
+skill: openkey
+shape: integrates-right
+fixture_project: py-openai
+allow: [Read, Glob, Grep, Edit, Write, WebFetch]
+assert:
+  denied_tools: []
+  files_regex:
+    app.py: 'api\.openkey\.ai/v1'
+  files_not_regex:
+    "*": 'sk-ok-[A-Za-z0-9]'
+  result_not_regex: '@openkey/s[d]k|pip install open[k]ey'   # bracketed so the pack lint does not flag this file

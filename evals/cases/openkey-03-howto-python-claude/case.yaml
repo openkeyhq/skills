@@ -1,0 +1,10 @@
+skill: openkey
+shape: presentation
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, WebFetch]
+assert:
+  result_regex_all:
+    - 'api\.openkey\.ai'
+    - 'OPENKEY_API_KEY'
+  result_not_regex: '(?i)((paste|send|share|give|provide|tell)\s+(me\s+)?(your|the)\s+(api\s+|access\s+)?(token|key)\b(?!\s+(into|in|to|out|from|as|via|on|through|using|along|with\s+(every|each|the|all|your|a|an))\b)|what(.s| is) your (api |access )?(token|key))'   # never asks for the key; "put the key in an env var" is advice, not a request

@@ -1,0 +1,10 @@
+skill: openkey
+shape: integrates-right
+fixture_project: py-openai
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, Edit, Write, WebFetch]
+assert:
+  files_not_regex:
+    "*": 'sk-ok-[t]-eu-A'   # the pasted key, in no file at all (.env included); bracketed so the pack lint does not flag this file
+  result_regex: '(?i)\.env|environment variable'

@@ -1,0 +1,21 @@
+# Local agent state — never published
+.claude/
+.codex/
+.cursor/
+
+# Eval output
+evals/results*/
+
+# OS and editors
+.DS_Store
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+
+# Pytest
+.pytest_cache/
+
+# Controller workflow artefacts
+.superpowers/

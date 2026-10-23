@@ -1,0 +1,9 @@
+skill: openkey
+shape: integrates-right
+fixture_project: py-openai
+mcp: none
+max_budget_usd: 0.6
+allow: [Read, Glob, Grep, Edit, Write, WebFetch]
+assert:
+  files_regex:
+    app.py: 'anthropic/claude-sonnet-4[.-]5'

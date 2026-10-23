@@ -1,0 +1,23 @@
+{
+  "name": "openkey",
+  "displayName": "OpenKey",
+  "version": "0.1.0",
+  "description": "Integrate the OpenKey LLM gateway into your project and run your coding agent through it: one key, OpenAI-, Anthropic- and Gemini-compatible.",
+  "author": {
+    "name": "OpenKey"
+  },
+  "publisher": "OpenKey",
+  "homepage": "https://openkey.ai",
+  "repository": "https://github.com/openkeyhq/skills",
+  "license": "MIT",
+  "category": "developer-tools",
+  "keywords": [
+    "openkey",
+    "llm",
+    "llm-gateway",
+    "openai-compatible",
+    "model-routing",
+    "skills"
+  ],
+  "skills": "./skills/"
+}
