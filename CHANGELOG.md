@@ -2,6 +2,12 @@
 
 All notable changes to this pack. The format follows Keep a Changelog, and the pack uses semantic versioning: a patch for wording and fixes, a minor for a new skill or install path, a major for renaming or removing a skill.
 
+## [0.1.4] - 2026-10-24
+
+### Added
+
+- README section "What it connects to": the public OpenKey pages the agent may read, and when the code it writes calls the API.
+
 ## [0.1.3] - 2026-10-24
 
 ### Changed

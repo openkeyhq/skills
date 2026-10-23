@@ -45,6 +45,15 @@ gh skill install openkeyhq/skills --all --agent claude-code --scope user
 
 Full steps, updating and troubleshooting are in [INSTALL.md](INSTALL.md). An agent installing this for you should follow [INSTALL_FOR_AGENTS.md](INSTALL_FOR_AGENTS.md).
 
+## What it connects to
+
+The plugin has no MCP server, hooks or scripts that run on install. When a skill or `/openkey:integrate` is in use, the agent may read these public OpenKey pages, without a key and without sending any of your data:
+
+- `https://api.openkey.ai/v1/models` and `https://api.openkey.ai/api/public/v1/models/<provider>/<model>`, to confirm a model id
+- `https://openkey.ai/llms.txt`, `https://openkey.ai/llms-full.txt`, the per-model `https://openkey.ai/models/<lab>/<model_slug>/llms.txt` files and the docs at `https://openkey.ai/docs`, for current facts
+
+The code the agent writes calls `https://api.openkey.ai` with your key from `OPENKEY_API_KEY`. That code runs only when you run it, or when you ask the agent to run it.
+
 ## Commands
 
 Commands are slash commands you call explicitly.
