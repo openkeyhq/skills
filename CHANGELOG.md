@@ -2,6 +2,16 @@
 
 All notable changes to this pack. The format follows Keep a Changelog, and the pack uses semantic versioning: a patch for wording and fixes, a minor for a new skill or install path, a major for renaming or removing a skill.
 
+## [0.1.2] - 2026-10-24
+
+### Added
+
+- Plugin icon (`.claude-plugin/icon.png`), the OpenKey mark.
+
+### Changed
+
+- `/openkey:integrate` pre-approves edits and new files inside the project only (`Edit(./**)`, `Write(./**)`).
+
 ## [0.1.1] - 2026-10-23
 
 ### Fixed

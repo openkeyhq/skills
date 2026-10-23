@@ -7,14 +7,14 @@
   },
   "metadata": {
     "description": "Official OpenKey skills: integrate the OpenKey LLM gateway.",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "plugins": [
     {
       "name": "openkey",
       "source": "./",
       "description": "Integrate the OpenKey LLM gateway into your project and run your coding agent through it: one key, OpenAI-, Anthropic- and Gemini-compatible.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development",
       "homepage": "https://openkey.ai",
       "license": "MIT"

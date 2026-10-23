@@ -1,7 +1,7 @@
 ---
 description: Integrate OpenKey into this project
 argument-hint: [what to switch, e.g. "all OpenAI calls"]
-allowed-tools: [Read, Glob, Grep, Edit, Write, "WebFetch(domain:api.openkey.ai)", "WebFetch(domain:openkey.ai)"]
+allowed-tools: [Read, Glob, Grep, "Edit(./**)", "Write(./**)", "WebFetch(domain:api.openkey.ai)", "WebFetch(domain:openkey.ai)"]
 disable-model-invocation: true
 ---
 

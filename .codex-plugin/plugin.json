@@ -1,6 +1,6 @@
 {
   "name": "openkey",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Integrate the OpenKey LLM gateway into your project and run your coding agent through it: one key, OpenAI-, Anthropic- and Gemini-compatible.",
   "author": {
     "name": "OpenKey",
